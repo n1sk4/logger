@@ -28,6 +28,9 @@ mkdir build && cd build
 # Configure and build
 cmake ..
 cmake --build .
+
+# Build with examples
+cmake -DBUILD_EXAMPLES=ON ..
 ```
 
 ### Integration into Your Project
