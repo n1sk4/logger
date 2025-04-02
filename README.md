@@ -39,47 +39,10 @@ target_link_libraries(YourProject PRIVATE Logger)
 
 ## Usage
 ### Basic Usage
-```cpp
-#include "logger.hpp"
-
-int main() {
-    // Initialize the logger
-    Logger::getInstance().init("./logs/application.log");
-    
-    // Log messages with different levels
-    LOG_INFO("Application started");
-    LOG_DEBUG("Debug information: %d", 42);
-    LOG_WARNING("This is a warning message");
-    LOG_ERROR("Error occurred: %s", "file not found");
-    
-    return 0;
-}
-```
+https://github.com/n1sk4/logger/blob/f065a857ee806e8134fa44eee852730b9eb1b4d6/examples/example_basic.cpp#L1-L15
 
 ### Advanced Configuration
-```cpp
-#include "logger.hpp"
-
-int main() {
-    // Initialize with custom settings
-    Logger::getInstance().init(
-        "./logs/application.log",   // Log file path
-        LogLevel::DEBUG,            // Log level
-        true,                       // Console output enabled
-        1024 * 1024                 // 1MB max file size
-    );
-    
-    // Change settings at runtime
-    Logger::getInstance().setLevel(LogLevel::WARNING);
-    Logger::getInstance().setConsoleOutput(false);
-    
-    // Continue logging
-    LOG_WARNING("This will be logged");
-    LOG_INFO("This won't be logged due to level change");
-    
-    return 0;
-}
-```
+https://github.com/n1sk4/logger/blob/f065a857ee806e8134fa44eee852730b9eb1b4d6/examples/example_advanced.cpp#L1-L22
 
 ## Log Levels
 The library supports the following log levels (in order of severity):
