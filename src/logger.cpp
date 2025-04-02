@@ -258,7 +258,7 @@ void Logger::getTimestamp(char *buffer, size_t bufferSize)
 #ifdef _WIN32
   localtime_s(&now_tm, &now_time_t);
 #else
-  localtime_r(&now_tm, &now_time_t);
+  localtime_r(&now_time_t, &now_tm);
 #endif
   snprintf(buffer, bufferSize, "%02d:%02d:%02d.%03ld",
            now_tm.tm_hour,
