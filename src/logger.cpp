@@ -230,8 +230,22 @@ bool Logger::createLogDirectory(const std::string &filePath)
 void Logger::rotateLogFile()
 {
   std::string backupFileName = std::string(m_logFilePath) + ".bak";
-  remove(backupFileName.c_str());
-  rename(m_logFilePath.c_str(), backupFileName.c_str());
+  if(std::filesystem::exists(backupFileName))
+  {
+    std::error_code ec;
+    std::filesystem::remove(backupFileName, ec);
+    if(ec)
+    {
+      std::cerr << "Failed to remove backup file: " << ec.message() << "\n";
+    }
+  }
+
+  std::error_code ec;
+  std::filesystem::rename(m_logFilePath, backupFileName, ec);
+  if(ec)
+  {
+    std::cerr << "Failed to rename log file: " << ec.message() << "\n";
+  }
 }
 
 void Logger::getTimestamp(char *buffer, size_t bufferSize)
@@ -241,8 +255,11 @@ void Logger::getTimestamp(char *buffer, size_t bufferSize)
   auto now_ms = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()) % 1000;
   std::tm now_tm;
 
+#ifdef _WIN32
   localtime_s(&now_tm, &now_time_t);
-
+#else
+  localtime_r(&now_tm, &now_time_t);
+#endif
   snprintf(buffer, bufferSize, "%02d:%02d:%02d.%03ld",
            now_tm.tm_hour,
            now_tm.tm_min,
