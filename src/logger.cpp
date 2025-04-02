@@ -1,65 +1,74 @@
 #include "logger.hpp"
 
-Logger& Logger::getInstance()
+Logger &Logger::getInstance()
 {
   static Logger instance;
   return instance;
 }
 
-Logger::Logger() 
-    : m_currentLevel(LogLevel::INFO), 
-      m_logFilePath(""), 
-      m_maxFileSize(32768), 
-      m_initialized(false), 
-      m_consoleOutput(true) {
+Logger::Logger()
+    : m_currentLevel(LogLevel::INFO),
+      m_logFilePath(""),
+      m_maxFileSize(32768),
+      m_initialized(false),
+      m_consoleOutput(true)
+{
 }
 
-bool Logger::init(const char* logFilePath, LogLevel level, bool consoleOutput, size_t maxFileSize) {
-  if (m_initialized) {
-      return true;
+bool Logger::init(const char *logFilePath, LogLevel level, bool consoleOutput, size_t maxFileSize)
+{
+  if (m_initialized)
+  {
+    return true;
   }
-  
+
   m_logFilePath = logFilePath;
   m_currentLevel = level;
   m_consoleOutput = consoleOutput;
   m_maxFileSize = maxFileSize;
-  
-  if (!createLogDirectory(m_logFilePath)) {
-      std::cerr << "Failed to create log directory for: " << m_logFilePath << std::endl;
-      return false;
+
+  if (!createLogDirectory(m_logFilePath))
+  {
+    std::cerr << "Failed to create log directory for: " << m_logFilePath << std::endl;
+    return false;
   }
-  
+
   std::ofstream logFile(m_logFilePath, std::ios_base::app);
-  if (!logFile.is_open()) {
-      std::cerr << "Failed to initialize logger file: " << m_logFilePath << std::endl;
-      return false;
+  if (!logFile.is_open())
+  {
+    std::cerr << "Failed to initialize logger file: " << m_logFilePath << std::endl;
+    return false;
   }
-  
+
   char timestampBuffer[64];
   getTimestamp(timestampBuffer, sizeof(timestampBuffer));
   logFile << "[" << timestampBuffer << "] [INFO] Logger initialized" << std::endl;
   logFile.close();
-  
+
   m_initialized = true;
   return true;
 }
 
-Logger::~Logger() {
-  if (m_initialized) {
+Logger::~Logger()
+{
+  if (m_initialized)
+  {
     char timestampBuffer[TIME_STAMP_BUFFER];
     getTimestamp(timestampBuffer, TIME_STAMP_BUFFER);
-    
+
     std::ofstream logFile(m_logFilePath, std::ios_base::app);
-    if (logFile.is_open()) {
+    if (logFile.is_open())
+    {
       logFile << "[" << timestampBuffer << "] [INFO] Logger shutdown" << std::endl;
       logFile.close();
     }
   }
 }
 
-void Logger::error(const char* format, ...)
+void Logger::error(const char *format, ...)
 {
-  if (!m_initialized || LogLevel::ERR > m_currentLevel) {
+  if (!m_initialized || LogLevel::ERR > m_currentLevel)
+  {
     return;
   }
 
@@ -72,9 +81,10 @@ void Logger::error(const char* format, ...)
   log(LogLevel::ERR, "%s", buffer);
 }
 
-void Logger::warning(const char* format, ...)
+void Logger::warning(const char *format, ...)
 {
-  if (!m_initialized || LogLevel::WARNING > m_currentLevel) {
+  if (!m_initialized || LogLevel::WARNING > m_currentLevel)
+  {
     return;
   }
 
@@ -87,9 +97,10 @@ void Logger::warning(const char* format, ...)
   log(LogLevel::WARNING, "%s", buffer);
 }
 
-void Logger::info(const char* format, ...)
+void Logger::info(const char *format, ...)
 {
-  if (!m_initialized || LogLevel::INFO > m_currentLevel) {
+  if (!m_initialized || LogLevel::INFO > m_currentLevel)
+  {
     return;
   }
 
@@ -102,9 +113,10 @@ void Logger::info(const char* format, ...)
   log(LogLevel::INFO, "%s", buffer);
 }
 
-void Logger::debug(const char* format, ...)
+void Logger::debug(const char *format, ...)
 {
-  if (!m_initialized || LogLevel::DEBUG > m_currentLevel) {
+  if (!m_initialized || LogLevel::DEBUG > m_currentLevel)
+  {
     return;
   }
 
@@ -117,9 +129,9 @@ void Logger::debug(const char* format, ...)
   log(LogLevel::DEBUG, "%s", buffer);
 }
 
-void Logger::log(LogLevel level, const char* format, ...)
+void Logger::log(LogLevel level, const char *format, ...)
 {
-  if(!m_initialized || level > m_currentLevel)
+  if (!m_initialized || level > m_currentLevel)
   {
     return;
   }
@@ -139,12 +151,11 @@ void Logger::log(LogLevel level, const char* format, ...)
   char logEntry[m_bufferSize + 64];
 
   snprintf(
-    logEntry, sizeof(logEntry), 
-    "[%s] [%s] %s\n",
-    timestampBuffer, logLevelToString(level), buffer
-  );
+      logEntry, sizeof(logEntry),
+      "[%s] [%s] %s\n",
+      timestampBuffer, logLevelToString(level), buffer);
 
-  if(m_consoleOutput)
+  if (m_consoleOutput)
   {
     std::cout << logEntry;
   }
@@ -152,10 +163,10 @@ void Logger::log(LogLevel level, const char* format, ...)
   std::ofstream logFile;
   logFile.open(m_logFilePath, std::ios_base::app);
 
-  if(!logFile.is_open())
+  if (!logFile.is_open())
   {
     logFile.open(m_logFilePath, std::ios_base::out);
-    if(!logFile.is_open())
+    if (!logFile.is_open())
     {
       unlockMutex();
       return;
@@ -163,12 +174,12 @@ void Logger::log(LogLevel level, const char* format, ...)
   }
 
   logFile.seekp(0, std::ios_base::end);
-  if(static_cast<size_t>(logFile.tellp()) + strlen(logEntry) > m_maxFileSize)
+  if (static_cast<size_t>(logFile.tellp()) + strlen(logEntry) > m_maxFileSize)
   {
     logFile.close();
     rotateLogFile();
     logFile.open(m_logFilePath, std::ios_base::out);
-    if(!logFile.is_open())
+    if (!logFile.is_open())
     {
       unlockMutex();
       return;
@@ -183,30 +194,34 @@ void Logger::log(LogLevel level, const char* format, ...)
 
 void Logger::lockMutex()
 {
-  static_cast<std::mutex*>(&m_logMutex)->lock();
+  static_cast<std::mutex *>(&m_logMutex)->lock();
 }
 
 void Logger::unlockMutex()
 {
-  static_cast<std::mutex*>(&m_logMutex)->unlock();
+  static_cast<std::mutex *>(&m_logMutex)->unlock();
 }
 
-bool Logger::createLogDirectory(const std::string& filePath)
+bool Logger::createLogDirectory(const std::string &filePath)
 {
   std::filesystem::path path(filePath);
   std::filesystem::path dir = path.parent_path();
 
-  if (dir.empty()) {
+  if (dir.empty())
+  {
     return true;
   }
 
-  try {
-    if (!std::filesystem::exists(dir)) {
+  try
+  {
+    if (!std::filesystem::exists(dir))
+    {
       return std::filesystem::create_directories(dir);
     }
     return true;
   }
-  catch (const std::filesystem::filesystem_error& e) {
+  catch (const std::filesystem::filesystem_error &e)
+  {
     std::cerr << "Error creating directory: " << e.what() << std::endl;
     return false;
   }
@@ -219,31 +234,36 @@ void Logger::rotateLogFile()
   rename(m_logFilePath.c_str(), backupFileName.c_str());
 }
 
-void Logger::getTimestamp(char* buffer, size_t bufferSize)
+void Logger::getTimestamp(char *buffer, size_t bufferSize)
 {
   auto now = std::chrono::system_clock::now();
   auto now_time_t = std::chrono::system_clock::to_time_t(now);
   auto now_ms = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()) % 1000;
   std::tm now_tm;
-  
+
   localtime_s(&now_tm, &now_time_t);
 
-  snprintf(buffer, bufferSize, "%02d:%02d:%02d.%03ld", 
-    now_tm.tm_hour, 
-    now_tm.tm_min, 
-    now_tm.tm_sec, 
-    (long)now_ms.count());
+  snprintf(buffer, bufferSize, "%02d:%02d:%02d.%03ld",
+           now_tm.tm_hour,
+           now_tm.tm_min,
+           now_tm.tm_sec,
+           (long)now_ms.count());
 }
 
-const char* Logger::logLevelToString(LogLevel level)
+const char *Logger::logLevelToString(LogLevel level)
 {
-  switch (level) 
+  switch (level)
   {
-    case LogLevel::ERR:     return "ERROR";
-    case LogLevel::WARNING: return "WARN ";
-    case LogLevel::INFO:    return "INFO ";
-    case LogLevel::DEBUG:   return "DEBUG";
-    default:                return "?????";
+  case LogLevel::ERR:
+    return "ERROR";
+  case LogLevel::WARNING:
+    return "WARN ";
+  case LogLevel::INFO:
+    return "INFO ";
+  case LogLevel::DEBUG:
+    return "DEBUG";
+  default:
+    return "?????";
   }
 }
 
