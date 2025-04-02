@@ -11,10 +11,25 @@ file(GLOB SOURCES "src/*.cpp")
 
 add_library(${PROJECT_NAME} ${SOURCES})
 
+set_target_properties(${PROJECT_NAME} PROPERTIES
+  VERSION ${PROJECT_VERSION}
+  SOVERSION ${PROJECT_VERSION_MAJOR}
+)
+
+add_library(Logger::Logger ALIAS ${PROJECT_NAME})
+
+target_include_directories(${PROJECT_NAME} PUBLIC include)
+
 option(BUILD_EXAMPLES "Build example programs" OFF)
 
 if(BUILD_EXAMPLES)
   add_subdirectory(examples)
 endif()
 
-target_include_directories(${PROJECT_NAME} PUBLIC include)
+install(TARGETS ${PROJECT_NAME}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
+install(DIRECTORY include/ DESTINATION include)
