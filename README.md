@@ -1,3 +1,5 @@
+[![Logger Multiplatform Build](https://github.com/n1sk4/logger/actions/workflows/main_build.yml/badge.svg)](https://github.com/n1sk4/logger/actions/workflows/main_build.yml)
+
 # Logger
 A lightweight, thread-safe C++ logging library with support for multiple log levels, file rotation, and console output.
 
