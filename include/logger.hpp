@@ -35,7 +35,7 @@ public:
   Logger(const Logger &) = delete;
   Logger &operator=(const Logger &) = delete;
   bool init(const char *logFilePath, LogLevel level = LogLevel::INFO,
-            bool consoleOutput = true, size_t maxFileSize = 32768);
+            bool consoleOutput = true, size_t maxFileSize = MAX_FILE_SIZE);
 
   void log(LogLevel level, const char *format, ...);
   void error(const char *format, ...);

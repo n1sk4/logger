@@ -11,4 +11,10 @@ file(GLOB SOURCES "src/*.cpp")
 
 add_library(${PROJECT_NAME} ${SOURCES})
 
+option(BUILD_EXAMPLES "Build example programs" OFF)
+
+if(BUILD_EXAMPLES)
+  add_subdirectory(examples)
+endif()
+
 target_include_directories(${PROJECT_NAME} PUBLIC include)

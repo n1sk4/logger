@@ -9,7 +9,7 @@ Logger &Logger::getInstance()
 Logger::Logger()
     : m_currentLevel(LogLevel::INFO),
       m_logFilePath(""),
-      m_maxFileSize(32768),
+      m_maxFileSize(MAX_FILE_SIZE),
       m_initialized(false),
       m_consoleOutput(true)
 {
