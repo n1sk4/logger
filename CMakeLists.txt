@@ -21,9 +21,15 @@ add_library(Logger::Logger ALIAS ${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME} PUBLIC include)
 
 option(BUILD_EXAMPLES "Build example programs" OFF)
+option(BUILD_TESTS "Build test programs" OFF)
 
 if(BUILD_EXAMPLES)
   add_subdirectory(examples)
+endif()
+
+if(BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(tests)
 endif()
 
 install(TARGETS ${PROJECT_NAME}
