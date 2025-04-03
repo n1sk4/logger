@@ -12,6 +12,7 @@
 #include <cstring>
 #include <cstdio>
 #include <filesystem>
+#include <vector>
 
 #define BUFFER_SIZE 256
 #define TIME_STAMP_BUFFER 64
