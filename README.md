@@ -33,6 +33,22 @@ cmake --build .
 
 # Build with examples
 cmake -DBUILD_EXAMPLES=ON ..
+
+# Build with tests
+cmake -DBUILD_TESTS=ON ..
+```
+
+### Running Tests
+```bash
+# Configure and build with tests enabled
+mkdir build && cd build
+cmake -DBUILD_TESTS=ON ..
+cmake --build .
+
+# Run the tests
+ctest
+# or run the test executable directly
+./tests/logger_test
 ```
 
 ### Integration into Your Project
@@ -62,11 +78,11 @@ Only messages with a severity level equal to or less than the current log level 
 ## Log Format
 Log entries are formatted as:
 ```
-[HH:MM:SS.mmm] [LEVEL] Message
+[YYYY-MM-DD HH:MM:SS.mmm] [LEVEL] Message
 ```
 
 Example:
 ```
-[14:32:15.023] [INFO] Application started
-[14:32:16.045] [ERROR] Failed to open file: data.txt
+[2022-02-19 23:45:12.023] [INFO ] Application started
+[2022-02-19 23:45:20.023] [ERROR] Failed to open file: data.txt
 ```
