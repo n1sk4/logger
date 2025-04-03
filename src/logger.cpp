@@ -8,10 +8,11 @@ Logger &Logger::getInstance()
 
 Logger::Logger()
     : m_currentLevel(LogLevel::INFO),
-      m_logFilePath(""),
+      m_logFilePath(LOG_FILE_PATH),
       m_maxFileSize(MAX_FILE_SIZE),
       m_initialized(false),
-      m_consoleOutput(true)
+      m_consoleOutput(true),
+      m_lastFlushTime(std::chrono::steady_clock::now())
 {
 }
 
@@ -26,24 +27,29 @@ bool Logger::init(const char *logFilePath, LogLevel level, bool consoleOutput, s
   m_currentLevel = level;
   m_consoleOutput = consoleOutput;
   m_maxFileSize = maxFileSize;
+  m_messageBuffer.reserve(LOG_BUFFER_CAPACITY);
 
   if (!createLogDirectory(m_logFilePath))
   {
-    std::cerr << "Failed to create log directory for: " << m_logFilePath << std::endl;
+    std::cerr << "Failed to create log directory for: " << m_logFilePath << "\n";
     return false;
   }
 
-  std::ofstream logFile(m_logFilePath, std::ios_base::app);
-  if (!logFile.is_open())
+  if (!openLogFile())
   {
-    std::cerr << "Failed to initialize logger file: " << m_logFilePath << std::endl;
+    std::cerr << "Failed to initialize logger file: " << m_logFilePath << "\n";
     return false;
   }
+
+  m_currentFileSize = static_cast<size_t>(m_logFile.tellp());
 
   char timestampBuffer[64];
   getTimestamp(timestampBuffer, sizeof(timestampBuffer));
-  logFile << "[" << timestampBuffer << "] [INFO] Logger initialized" << std::endl;
-  logFile.close();
+
+  std::string initMessage = "[" + std::string(timestampBuffer) + "] [INFO] Logger initialized\n";
+  m_logFile << initMessage;
+  m_currentFileSize += initMessage.size();
+  m_logFile.flush();
 
   m_initialized = true;
   return true;
@@ -56,12 +62,13 @@ Logger::~Logger()
     char timestampBuffer[TIME_STAMP_BUFFER];
     getTimestamp(timestampBuffer, TIME_STAMP_BUFFER);
 
-    std::ofstream logFile(m_logFilePath, std::ios_base::app);
-    if (logFile.is_open())
-    {
-      logFile << "[" << timestampBuffer << "] [INFO] Logger shutdown" << std::endl;
-      logFile.close();
-    }
+    flushBuffer();
+
+    std::string shutdownMsg = "[" + std::string(timestampBuffer) + "] [INFO] Logger shutdown\n";
+    m_logFile << shutdownMsg;
+    m_logFile.flush();
+
+    closeLogFile();
   }
 }
 
@@ -136,6 +143,7 @@ void Logger::log(LogLevel level, const char *format, ...)
     return;
   }
 
+  std::ostringstream logStream;
   char buffer[m_bufferSize];
   char timestampBuffer[TIME_STAMP_BUFFER];
 
@@ -148,46 +156,32 @@ void Logger::log(LogLevel level, const char *format, ...)
 
   lockMutex();
 
-  char logEntry[m_bufferSize + 64];
-
-  snprintf(
-      logEntry, sizeof(logEntry),
-      "[%s] [%s] %s\n",
-      timestampBuffer, logLevelToString(level), buffer);
+  logStream << "[" << timestampBuffer << "] [" << logLevelToString(level) << "] " << buffer << "\n";
+  std::string logEntry = logStream.str();
 
   if (m_consoleOutput)
   {
     std::cout << logEntry;
   }
 
-  std::ofstream logFile;
-  logFile.open(m_logFilePath, std::ios_base::app);
-
-  if (!logFile.is_open())
+  if (!openLogFile())
   {
-    logFile.open(m_logFilePath, std::ios_base::out);
-    if (!logFile.is_open())
-    {
-      unlockMutex();
-      return;
-    }
+    unlockMutex();
+    return;
   }
 
-  logFile.seekp(0, std::ios_base::end);
-  if (static_cast<size_t>(logFile.tellp()) + strlen(logEntry) > m_maxFileSize)
-  {
-    logFile.close();
-    rotateLogFile();
-    logFile.open(m_logFilePath, std::ios_base::out);
-    if (!logFile.is_open())
-    {
-      unlockMutex();
-      return;
-    }
-  }
+  checkRotation(logEntry.size());
 
-  logFile << logEntry;
-  logFile.close();
+  m_messageBuffer.push_back(std::move(logEntry));
+  m_currentFileSize += logEntry.size();
+
+  auto now = std::chrono::steady_clock::now();
+  auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastFlushTime).count();
+
+  if (m_messageBuffer.size() >= LOG_BUFFER_CAPACITY || elapsedMs >= FLUSH_INTERVAL_MS)
+  {
+    flushBuffer();
+  }
 
   unlockMutex();
 }
@@ -200,6 +194,52 @@ void Logger::lockMutex()
 void Logger::unlockMutex()
 {
   static_cast<std::mutex *>(&m_logMutex)->unlock();
+}
+
+bool Logger::openLogFile()
+{
+  if (m_logFile.is_open())
+  {
+    return true;
+  }
+
+  m_logFile.open(m_logFilePath, std::ios_base::app | std::ios_base::out);
+
+  if (!m_logFile.is_open())
+  {
+    m_logFile.open(m_logFilePath, std::ios_base::out);
+    if (!m_logFile.is_open())
+      return false;
+  }
+
+  m_logFile.seekp(0, std::ios_base::end);
+  m_currentFileSize = static_cast<size_t>(m_logFile.tellp());
+
+  return true;
+}
+
+void Logger::closeLogFile()
+{
+  if (m_logFile.is_open())
+    m_logFile.close();
+}
+
+void Logger::flushBuffer()
+{
+  for (const auto &message : m_messageBuffer)
+  {
+    m_logFile << message;
+  }
+
+  m_logFile.flush();
+  m_messageBuffer.clear();
+}
+
+void Logger::flush()
+{
+  lockMutex();
+  flushBuffer();
+  unlockMutex();
 }
 
 bool Logger::createLogDirectory(const std::string &filePath)
@@ -230,11 +270,11 @@ bool Logger::createLogDirectory(const std::string &filePath)
 void Logger::rotateLogFile()
 {
   std::string backupFileName = std::string(m_logFilePath) + ".bak";
-  if(std::filesystem::exists(backupFileName))
+  if (std::filesystem::exists(backupFileName))
   {
     std::error_code ec;
     std::filesystem::remove(backupFileName, ec);
-    if(ec)
+    if (ec)
     {
       std::cerr << "Failed to remove backup file: " << ec.message() << "\n";
     }
@@ -242,9 +282,27 @@ void Logger::rotateLogFile()
 
   std::error_code ec;
   std::filesystem::rename(m_logFilePath, backupFileName, ec);
-  if(ec)
+  if (ec)
   {
     std::cerr << "Failed to rename log file: " << ec.message() << "\n";
+  }
+}
+
+void Logger::checkRotation(size_t messageSize)
+{
+  if (m_currentFileSize + messageSize > m_maxFileSize)
+  {
+    for (const auto &message : m_messageBuffer)
+    {
+      m_logFile << message;
+    }
+    m_messageBuffer.clear();
+
+    closeLogFile();
+    rotateLogFile();
+    openLogFile();
+
+    m_currentFileSize = 0;
   }
 }
 
