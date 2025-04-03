@@ -12,7 +12,7 @@ on:
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }} (${{ matrix.build_type }})
+    name: Build and Test on ${{ matrix.os }} (${{ matrix.build_type }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -21,37 +21,41 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        
+
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt update
           sudo apt install -y cmake g++-12 ninja-build
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 60
-          
+
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
           brew install cmake ninja gcc@12
           echo 'export PATH="/usr/local/opt/gcc@12/bin:$PATH"' >> ~/.zshrc
           source ~/.zshrc
-          
+
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
           choco install cmake ninja --installargs 'ADD_CMAKE_TO_PATH=System' -y
           choco install mingw --version=12.2.0 -y
           setx PATH "%PATH%;C:\Program Files\mingw-w64\bin"
-          
+
       - name: Create Build Directory
         run: mkdir build
-        
+
       - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DBUILD_EXAMPLES=ON -G Ninja
-        
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DBUILD_EXAMPLES=ON -DBUILD_TESTS=ON -G Ninja
+
       - name: Build Project
         run: cmake --build build --config ${{ matrix.build_type }}
-        
+
+      - name: Run Tests
+        working-directory: build
+        run: ctest --output-on-failure
+
       - name: Run Examples
         working-directory: build/examples
         run: |
@@ -63,15 +67,15 @@ jobs:
             ./advanced_example || true
           fi
         shell: bash
-          
+
       - name: Create Library Package
         run: |
           mkdir -p logger-package/include
           mkdir -p logger-package/lib/${{ matrix.build_type }}
-          
+
           # Copy headers
           cp -r include/* logger-package/include/
-          
+
           # Copy library files based on platform
           if [ "${{ runner.os }}" == "Windows" ]; then
             cp build/libLogger.a logger-package/lib/${{ matrix.build_type }}/
@@ -80,10 +84,10 @@ jobs:
           else
             cp build/libLogger.a logger-package/lib/${{ matrix.build_type }}/
           fi
-          
+
           # Copy documentation
           cp README.md logger-package/
-          
+
           # Create archive
           if [ "${{ runner.os }}" == "Windows" ]; then
             7z a logger-${{ runner.os }}-${{ matrix.build_type }}.zip logger-package/
@@ -91,13 +95,13 @@ jobs:
             zip -r logger-${{ runner.os }}-${{ matrix.build_type }}.zip logger-package/
           fi
         shell: bash
-        
+
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: logger-${{ runner.os }}-${{ matrix.build_type }}
           path: logger-${{ runner.os }}-${{ matrix.build_type }}.zip
-          
+
   release-package:
     name: Create Release Package
     needs: build
@@ -108,13 +112,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-          
+
       - name: Create combined package
         run: |
           mkdir -p logger-combined
           cp -r artifacts/*/* logger-combined/
           zip -r logger-all-platforms.zip logger-combined/
-          
+
       - name: Upload to release
         uses: softprops/action-gh-release@v1
         with:
