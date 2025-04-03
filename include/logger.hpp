@@ -14,7 +14,7 @@
 #include <filesystem>
 
 #define BUFFER_SIZE 256
-#define TIME_STAMP_BUFFER 32
+#define TIME_STAMP_BUFFER 64
 #define MAX_FILE_SIZE 32768
 #define LOG_FILE_PATH "./logs/logger.log"
 #define LOG_BUFFER_CAPACITY 100

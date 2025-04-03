@@ -318,7 +318,10 @@ void Logger::getTimestamp(char *buffer, size_t bufferSize)
 #else
   localtime_r(&now_time_t, &now_tm);
 #endif
-  snprintf(buffer, bufferSize, "%02d:%02d:%02d.%03ld",
+  snprintf(buffer, bufferSize, "%04d-%02d-%02d %02d:%02d:%02d.%03ld",
+           now_tm.tm_year + 1900,
+           now_tm.tm_mon + 1,
+           now_tm.tm_mday,
            now_tm.tm_hour,
            now_tm.tm_min,
            now_tm.tm_sec,
