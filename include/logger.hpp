@@ -60,6 +60,7 @@ private:
   void closeLogFile();
   void flushBuffer();
   bool createLogDirectory(const std::string &filePath);
+  bool validateLogPath(const std::string &path);
   void checkRotation(size_t messageSize);
   void rotateLogFile();
   void getTimestamp(char *buffer, size_t bufferSize);

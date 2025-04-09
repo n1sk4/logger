@@ -196,26 +196,51 @@ void Logger::unlockMutex()
   static_cast<std::mutex *>(&m_logMutex)->unlock();
 }
 
-bool Logger::openLogFile()
+bool Logger::validateLogPath(const std::string &path)
 {
-  if (m_logFile.is_open())
-  {
-    return true;
-  }
-
-  m_logFile.open(m_logFilePath, std::ios_base::app | std::ios_base::out);
-
-  if (!m_logFile.is_open())
-  {
-    m_logFile.open(m_logFilePath, std::ios_base::out);
-    if (!m_logFile.is_open())
-      return false;
-  }
-
-  m_logFile.seekp(0, std::ios_base::end);
-  m_currentFileSize = static_cast<size_t>(m_logFile.tellp());
+  if (path.find("..") != std::string::npos)
+    return false; // Potential directory traversal
 
   return true;
+}
+
+bool Logger::openLogFile()
+{
+  std::filesystem::path logPath(m_logFilePath);
+  std::filesystem::path logDir = logPath.parent_path();
+
+  try
+  {
+    if (std::filesystem::exists(logDir) && !std::filesystem::is_directory(logDir))
+    {
+      std::cerr << "Log path is not a directory: '" << logDir << "'\n";
+      return false;
+    }
+
+    if (m_logFile.is_open())
+    {
+      return true;
+    }
+
+    m_logFile.open(m_logFilePath, std::ios_base::app | std::ios_base::out);
+
+    if (!m_logFile.is_open())
+    {
+      m_logFile.open(m_logFilePath, std::ios_base::out);
+      if (!m_logFile.is_open())
+        return false;
+    }
+
+    m_logFile.seekp(0, std::ios_base::end);
+    m_currentFileSize = static_cast<size_t>(m_logFile.tellp());
+
+    return true;
+  }
+  catch (const std::filesystem::filesystem_error& e)
+  {
+    std::cerr << "Filesystem error: " << e.what() << "\n";
+    return false;
+  }
 }
 
 void Logger::closeLogFile()
